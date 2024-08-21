@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: "configserver"
+  profiles:
+    active: native
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: "classpath:/config"
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  endpoint:
+    web:
+      exposure:
+        include: "*"
+    health:
+      probes:
+        enabled: true
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+server:
+  port: 8071
+
+pattern:
+  level: "%5p [${spring.application.name},%X{trace_id},%X{span_id}]"
