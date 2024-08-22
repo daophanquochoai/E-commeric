@@ -6,6 +6,7 @@
     <mapping directory="$PROJECT_DIR$/configserver" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/eurekeserver" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/favourite_service" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/message_service" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/order_service" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/product_service" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/shipping_service" vcs="Git" />

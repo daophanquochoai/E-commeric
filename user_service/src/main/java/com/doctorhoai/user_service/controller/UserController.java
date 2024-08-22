@@ -2,6 +2,7 @@ package com.doctorhoai.user_service.controller;
 
 import com.doctorhoai.user_service.dto.UserDto;
 import com.doctorhoai.user_service.service.UserService;
+import com.doctorhoai.user_service.service.kafka.KafkaService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -18,6 +19,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
+    private final KafkaService kafkaService;
 
     @GetMapping
     public ResponseEntity<List<UserDto>> findAll() {
@@ -37,7 +39,9 @@ public class UserController {
             @RequestBody
             @NotNull(message = "Input must not NULL")
             @Valid final UserDto userDto) {
-        return ResponseEntity.ok(this.userService.save(userDto));
+        UserDto userDto1 = this.userService.save(userDto);
+        kafkaService.sendEventToTopic(userDto);
+        return ResponseEntity.ok(userDto1);
     }
 
     @PutMapping

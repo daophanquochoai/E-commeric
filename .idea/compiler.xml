@@ -8,6 +8,7 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="shipping_service" />
+        <module name="message_service" />
         <module name="user_service" />
         <module name="order_service" />
         <module name="eurekeserver" />
@@ -28,6 +29,7 @@
       <module name="configserver" options="-parameters" />
       <module name="eurekeserver" options="-parameters" />
       <module name="favourite_service" options="-parameters" />
+      <module name="message_service" options="-parameters" />
       <module name="order_service" options="-parameters" />
       <module name="product_service" options="-parameters" />
       <module name="proxy-client" options="-parameters" />
