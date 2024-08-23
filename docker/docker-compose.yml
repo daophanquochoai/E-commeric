@@ -1,0 +1,178 @@
+version: '3'
+
+services:
+  zookeeper:
+    image: bitnami/zookeeper
+    restart: always
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/bitnami
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      - doctorhoai
+
+  kafka:
+    image: bitnami/kafka
+    ports:
+      - "9092:9092"
+    restart: always
+    volumes:
+      - kafka_data:/bitnami
+    environment:
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+    depends_on:
+      - zookeeper
+    networks:
+      - doctorhoai
+
+  mysql:
+    image: mysql:latest
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ecommeric_db
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "--silent" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - doctorhoai
+
+  zipkin:
+    image: openzipkin/zipkin-slim
+    container_name: zipkin
+    environment:
+      - STORAGE_TYPE=mem
+    ports:
+      # Port used for the Zipkin UI and HTTP Api
+      - 9411:9411
+    networks:
+      - doctorhoai
+
+  configserver:
+    image: doctorhoai/configserver:s22
+    container_name: configserver
+    ports:
+      - "8071:8071"
+    healthcheck:
+      test: "curl --fail --silent http://localhost:8071/actuator/health/readiness | grep UP || exit 1"
+      interval: 20s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    depends_on:
+      mysql:
+        condition: service_healthy
+      zipkin:
+        condition: service_healthy
+    environment:
+      - SPRING_ZIPKIN_BASE-URL=http://zipkin:9411
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/ecommeric_db
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+    networks:
+      - doctorhoai
+
+  eureka:
+    image: doctorhoai/eurekeserver:s1
+    container_name: eurekaserver
+    ports:
+      - "8070:8070"
+    healthcheck:
+      test: "curl --fail --silent http://localhost:8070/actuator/health/readiness | grep UP || exit 1"
+      interval: 20s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    depends_on:
+      configserver:
+        condition: service_healthy
+      zipkin:
+        condition: service_healthy
+    environment:
+      - SPRING_APPLICATION_NAME=eurekaserver
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_CONFIG_IMPORT=configserver:http://configserver:8071/
+      - SPRING_ZIPKIN_BASE-URL=http://zipkin:9411
+    networks:
+      - doctorhoai
+
+  productservice:
+    image: doctorhoai/product_service:s1
+    container_name: productservice
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: "curl --fail --silent http://localhost:8080/actuator/health/readiness | grep UP || exit 1"
+      interval: 20s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    depends_on:
+      zipkin:
+        condition: service_healthy
+      configserver:
+        condition: service_healthy
+      eureka:
+        condition: service_healthy
+    environment:
+      - SPRING_APPLICATION_NAME=productservice
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_CONFIG_IMPORT=configserver:http://configserver:8071/
+      - SPRING_ZIPKIN_BASE-URL=http://zipkin:9411
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/ecommeric_db
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eurekaserver:8070/eureka/
+    networks:
+      - doctorhoai
+
+
+  apigateway:
+    image: doctorhoai/api-gateway:s1
+    container_name: apigateway
+    ports:
+      - "6379:6379"
+    depends_on:
+      configserver:
+        condition: service_healthy
+      eureka:
+        condition: service_healthy
+      zipkin:
+        condition: service_healthy
+      productservice:
+        condition: service_healthy
+    environment:
+      - SPRING_APPLICATION_NAME=apigateway
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_CONFIG_IMPORT=configserver:http://configserver:8071/
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eurekaserver:8070/eureka/
+      - SPRING_ZIPKIN_BASE-URL=http://zipkin:9411
+    networks:
+      - doctorhoai
+
+
+volumes:
+  zookeeper_data:
+    driver: local
+  kafka_data:
+    driver: local
+  mysql_data:
+    driver: local
+
+networks:
+  doctorhoai:
+    driver: bridge
